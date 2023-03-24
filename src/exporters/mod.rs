@@ -8,6 +8,7 @@ use influxdb2::api::write::TimestampPrecision;
 use influxdb2::models::DataPoint;
 use influxdb2::Client;
 use itertools::{Either, Itertools};
+use std::sync::Arc;
 
 pub async fn export_oura_data(
     oura_data_stream: impl Stream<Item = OuraData>,

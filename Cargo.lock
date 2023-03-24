@@ -885,7 +885,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ouraring-api2mqtt-poller"
+name = "ouraring-api-exporter"
 version = "0.1.0"
 dependencies = [
  "chrono",
