@@ -3,7 +3,7 @@ use influxdb2::models::DataPoint;
 
 #[derive(Debug)]
 pub enum InfluxDBMeasurement {
-    HearRate {
+    HeartRate {
         bpm: i64,
         source: String,
         timestamp: i64,
@@ -14,7 +14,7 @@ pub enum InfluxDBMeasurement {
 impl InfluxDBMeasurement {
     pub fn into_data_point(self) -> DataPoint {
         return match self {
-            InfluxDBMeasurement::HearRate {
+            InfluxDBMeasurement::HeartRate {
                 bpm,
                 source,
                 timestamp,
@@ -32,7 +32,7 @@ impl InfluxDBMeasurement {
 
 impl From<&HeartRateData> for InfluxDBMeasurement {
     fn from(heart_rate_data: &HeartRateData) -> Self {
-        InfluxDBMeasurement::HearRate {
+        InfluxDBMeasurement::HeartRate {
             bpm: heart_rate_data.bpm.into(),
             source: heart_rate_data.source.to_string(),
             timestamp: heart_rate_data.timestamp.timestamp(),

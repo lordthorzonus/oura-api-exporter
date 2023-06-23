@@ -1,14 +1,18 @@
 mod heart_rate;
 mod sleep;
 
-use crate::oura_api::sleep::OuraSleepDocument;
 use chrono::DateTime;
 use chrono::Utc;
 pub use heart_rate::OuraHeartRateData;
+pub use sleep::OuraSleepDocument;
+use std::error;
+
 use reqwest::header::AUTHORIZATION;
 use reqwest::{Error as ReqwestError, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result as FmtResult};
+
+pub const OURA_API_DATETIME_FORMAT: &'static str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OuraApiResponse<T> {
@@ -47,6 +51,8 @@ impl Display for OuraApiError {
     }
 }
 
+impl error::Error for OuraApiError {}
+
 pub async fn get_heart_rate_data(
     access_token: &String,
     start_time: &DateTime<Utc>,
@@ -65,11 +71,11 @@ pub async fn get_heart_rate_data(
 }
 
 pub async fn get_sleep_documents(
-    access_token: String,
-    start_time: DateTime<Utc>,
-    end_time: DateTime<Utc>,
+    access_token: &String,
+    start_time: &DateTime<Utc>,
+    end_time: &DateTime<Utc>,
 ) -> Result<OuraApiResponse<OuraSleepDocument>, OuraApiError> {
-    let url = "https://api.ouraring.com/v2/usercciwollection/sleep";
+    let url = "https://api.ouraring.com/v2/usercollection/sleep";
     let query = &[
         ("start_date", start_time.format("%Y-%m-%d").to_string()),
         ("end_date", end_time.format("%Y-%m-%d").to_string()),

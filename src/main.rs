@@ -1,5 +1,5 @@
 use chrono::{Duration, Utc};
-use futures::{stream, StreamExt};
+use futures::{stream, FutureExt, StreamExt};
 use influxdb2::Client;
 use std::sync::Arc;
 
@@ -22,25 +22,26 @@ async fn main() {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
     tokio::spawn(async move {
-        let poller = pollers::Poller::initialize_with_persons(persons);
+        let poller = pollers::Poller::initialize_with_persons(&persons);
         let seconds_in_past: i64 = poller_interval.into();
         let sleep_time: u64 = poller_interval.into();
 
         loop {
-            let start_time = Utc::now() - Duration::seconds(seconds_in_past) - Duration::hours(4);
+            let start_time = Utc::now() - Duration::seconds(seconds_in_past) - Duration::hours(32);
             let end_time = Utc::now();
-            match tx.send(
-                poller
-                    .poll_oura_data(&start_time, &end_time)
-                    .collect::<Vec<_>>()
-                    .await,
-            ) {
-                Ok(_) => {}
-                Err(e) => {
-                    println!("Error sending data to channel: {}", e);
-                }
-            }
-
+            let stream = poller
+                .poll_oura_data(&start_time, &end_time)
+                .chunks(10)
+                .for_each_concurrent(None, |data| async {
+                    match tx.send(data) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            println!("Error sending data to channel: {}", e);
+                        }
+                    }
+                });
+            stream.await;
+            println!("Polling loop ended");
             tokio::time::sleep(tokio::time::Duration::from_secs(sleep_time)).await
         }
     })

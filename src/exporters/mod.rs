@@ -16,7 +16,6 @@ pub async fn export_oura_data(
 ) {
     oura_data_stream
         .flat_map(|oura_data| {
-            println!("Oura data: {:?}", oura_data);
             return stream::iter(map_oura_data_to_export_items(oura_data));
         })
         .chunks(10)
@@ -29,6 +28,7 @@ pub async fn export_oura_data(
                 });
 
             if let Some((client, bucket)) = influxdb_env {
+                println!("Influx datapoints: {:?}", influxdb_data_points);
                 write_to_influxdb(influxdb_data_points, client, bucket).await
             }
 

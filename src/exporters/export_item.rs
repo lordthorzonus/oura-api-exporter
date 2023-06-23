@@ -43,8 +43,8 @@ pub fn map_oura_data_to_export_items(oura_data: OuraData) -> Vec<ExportItem> {
         OuraData::Readiness => {
             vec![]
         }
-        OuraData::Error(err) => {
-            eprintln!("Cannot map OuraApiError into export item: {}", err);
+        OuraData::Error { message } => {
+            eprintln!("Cannot map OuraDataError into export item: {}", message);
             vec![]
         }
     };
