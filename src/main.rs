@@ -27,12 +27,13 @@ async fn main() {
         let sleep_time: u64 = poller_interval.into();
 
         loop {
-            let start_time = Utc::now() - Duration::seconds(seconds_in_past) - Duration::hours(32);
+            let start_time = Utc::now() - Duration::seconds(seconds_in_past) - Duration::hours(64);
             let end_time = Utc::now();
             let stream = poller
                 .poll_oura_data(&start_time, &end_time)
                 .chunks(10)
                 .for_each_concurrent(None, |data| async {
+                    println!("{:?} DATA", data);
                     match tx.send(data) {
                         Ok(_) => {}
                         Err(e) => {

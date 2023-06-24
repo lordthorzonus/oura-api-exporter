@@ -1,4 +1,4 @@
-use crate::pollers::HeartRateData;
+use crate::pollers::HeartRate;
 use influxdb2::models::DataPoint;
 
 #[derive(Debug)]
@@ -30,8 +30,8 @@ impl InfluxDBMeasurement {
     }
 }
 
-impl From<&HeartRateData> for InfluxDBMeasurement {
-    fn from(heart_rate_data: &HeartRateData) -> Self {
+impl From<&HeartRate> for InfluxDBMeasurement {
+    fn from(heart_rate_data: &HeartRate) -> Self {
         InfluxDBMeasurement::HeartRate {
             bpm: heart_rate_data.bpm.into(),
             source: heart_rate_data.source.to_string(),

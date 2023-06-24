@@ -1,25 +1,36 @@
 mod errors;
 mod heart_rate;
+mod hrv;
 mod sleep;
 
 use crate::config::{Config, OuraPerson};
-use crate::oura_api::OuraApiError;
+use crate::oura_api::{OuraApiError, OURA_API_DATETIME_FORMAT};
 use crate::pollers::errors::OuraParsingError;
+use crate::pollers::hrv::HeartRateVariability;
 use crate::pollers::sleep::poll_sleep_data;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::stream::{select, select_all};
-use futures::{stream, Stream, StreamExt, TryStreamExt};
+use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
 use heart_rate::poll_heart_rate_data;
-pub use heart_rate::HeartRateData;
-use std::fmt::Error;
+pub use heart_rate::HeartRate;
 
 #[derive(Debug)]
 pub enum OuraData {
-    HeartRate(HeartRateData),
+    HeartRate(HeartRate),
+    HeartRateVariability(HeartRateVariability),
     Sleep,
     Activity,
     Readiness,
     Error { message: String },
+}
+
+pub fn parse_oura_timestamp(timestamp: &str) -> Result<DateTime<Utc>, OuraParsingError> {
+    match NaiveDateTime::parse_from_str(timestamp, OURA_API_DATETIME_FORMAT) {
+        Ok(datetime) => Ok(datetime.and_utc()),
+        Err(err) => Err(OuraParsingError {
+            message: format!("Cannot parse HeartRateData timestamp: {}", err),
+        }),
+    }
 }
 
 pub struct Poller<'a> {

@@ -1,12 +1,11 @@
 use crate::config::OuraPerson;
-use crate::oura_api::{get_sleep_documents, OuraApiError};
+use crate::oura_api::{get_sleep_documents, OuraApiError, OuraSleepDocument};
 use crate::pollers;
 use crate::pollers::errors::OuraParsingError;
+use crate::pollers::hrv::ToMultipleHeartRateVariability;
 use crate::pollers::OuraData;
 use chrono::{DateTime, Utc};
-use futures::{stream, StreamExt, TryFutureExt, TryStream};
-use itertools::Itertools;
-use pollers::heart_rate::ToMultipleHeartRateData;
+use pollers::heart_rate::ToMultipleHeartRate;
 
 #[derive(Debug)]
 pub enum SleepType {
@@ -58,34 +57,56 @@ pub struct Sleep {
     person_name: String,
 }
 
-pub fn poll_sleep_data<'a>(
+pub async fn poll_sleep_data<'a>(
     person: &'a OuraPerson,
     start_time: &'a DateTime<Utc>,
     end_time: &'a DateTime<Utc>,
-) -> impl TryStream<Ok = Vec<OuraData>, Error = OuraApiError> + 'a {
-    return stream::once(
-        get_sleep_documents(&person.access_token, start_time, end_time).map_ok(move |response| {
-            let sleep_documents = response.data;
-            println!("RESPONSE, {:?}", sleep_documents);
-            let heart_rate_data: Vec<OuraData> = sleep_documents
-                .into_iter()
-                .flat_map(|document| {
-                    let parsing_result = document.to_heart_rate_data(person.name.clone());
-                    let oura_data = match parsing_result {
-                        Ok(heart_rates) => heart_rates
-                            .into_iter()
-                            .map(|data| OuraData::HeartRate(data))
-                            .collect(),
-                        Err(err) => vec![OuraData::Error {
-                            message: format!("{}", err),
-                        }],
-                    };
-                    println!("DATA: {:?}", oura_data);
-                    return oura_data;
-                })
-                .collect();
+) -> Result<Vec<OuraData>, OuraApiError> {
+    let person_name = person.name.as_str();
+    let response = get_sleep_documents(&person.access_token, start_time, end_time).await;
+    let sleep_documents = response?.data;
 
-            return heart_rate_data;
-        }),
-    );
+    let heart_rate_data = parse_heart_rate_data(person_name, &sleep_documents);
+    let hrv_data = parse_hrv_data(person_name, &sleep_documents);
+
+    return Ok(heart_rate_data.chain(hrv_data).collect());
+}
+
+fn parse_hrv_data<'a>(
+    person_name: &'a str,
+    sleep_documents: &'a Vec<OuraSleepDocument>,
+) -> impl Iterator<Item = OuraData> + 'a {
+    sleep_documents.iter().flat_map(|document| {
+        let parsing_result = document.to_heart_rate_variability(person_name);
+        let oura_data = match parsing_result {
+            Ok(hrvs) => hrvs
+                .into_iter()
+                .map(|data| OuraData::HeartRateVariability(data))
+                .collect(),
+            Err(err) => vec![OuraData::Error {
+                message: format!("{}", err),
+            }],
+        };
+
+        return oura_data;
+    })
+}
+
+fn parse_heart_rate_data<'a>(
+    person_name: &'a str,
+    sleep_documents: &'a Vec<OuraSleepDocument>,
+) -> impl Iterator<Item = OuraData> + 'a {
+    sleep_documents.iter().flat_map(|document| {
+        let parsing_result = document.to_heart_rate_data(person_name);
+        let oura_data = match parsing_result {
+            Ok(heart_rates) => heart_rates
+                .into_iter()
+                .map(|data| OuraData::HeartRate(data))
+                .collect(),
+            Err(err) => vec![OuraData::Error {
+                message: format!("{}", err),
+            }],
+        };
+        return oura_data;
+    })
 }

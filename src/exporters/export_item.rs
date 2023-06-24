@@ -1,5 +1,5 @@
 use crate::exporters::influx_db_measurement::InfluxDBMeasurement;
-use crate::pollers::{HeartRateData, OuraData};
+use crate::pollers::{HeartRate, OuraData};
 use chrono::{DateTime, Utc};
 use futures::{stream, Stream};
 use influxdb2::models::{DataPoint, WriteDataPoint};
@@ -32,7 +32,11 @@ pub enum ExportItem {
 pub fn map_oura_data_to_export_items(oura_data: OuraData) -> Vec<ExportItem> {
     return match oura_data {
         OuraData::HeartRate(heart_rate_data) => {
+            println!("DATA: {:?}", heart_rate_data);
             map_heart_rate_data_to_export_items(&heart_rate_data)
+        }
+        OuraData::HeartRateVariability(hrv) => {
+            vec![]
         }
         OuraData::Sleep => {
             vec![]
@@ -50,7 +54,7 @@ pub fn map_oura_data_to_export_items(oura_data: OuraData) -> Vec<ExportItem> {
     };
 }
 
-fn map_heart_rate_data_to_export_items(heart_rate_data: &HeartRateData) -> Vec<ExportItem> {
+fn map_heart_rate_data_to_export_items(heart_rate_data: &HeartRate) -> Vec<ExportItem> {
     return vec![
         ExportItem::MQTT {
             topic: MqttTopic::HeartRate,

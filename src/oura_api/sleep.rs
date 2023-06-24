@@ -12,8 +12,8 @@ pub struct OuraSleepDocument {
     pub day: String,
     pub deep_sleep_duration: i16,
     pub efficiency: i16,
-    pub heart_rate: OuraSleepHeartRate,
-    //pub hrv: OuraSleepHeartRate,
+    pub heart_rate: OuraSleepMeasurement,
+    pub hrv: OuraSleepMeasurement,
     pub latency: i16,
     pub light_sleep_duration: i16,
     pub low_battery_alert: bool,
@@ -33,7 +33,7 @@ pub struct OuraSleepDocument {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct OuraSleepHeartRate {
+pub struct OuraSleepMeasurement {
     pub interval: f32,
     pub items: Vec<Option<f32>>,
     pub timestamp: String,
