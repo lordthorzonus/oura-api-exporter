@@ -2,10 +2,9 @@ use super::OuraData;
 use crate::config::OuraPerson;
 use crate::oura_api::OuraApiError;
 use crate::oura_api::{get_heart_rate_data, OuraHeartRateData, OuraSleepDocument};
-use crate::pollers;
+use crate::pollers::dates::TryOuraTimeStringParsing;
 use crate::pollers::errors::OuraParsingError;
 use chrono::{DateTime, Utc};
-use futures::{stream, FutureExt, Stream, StreamExt, TryStream, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Add;
@@ -57,51 +56,40 @@ pub struct HeartRate {
     pub person_name: String,
 }
 
-pub trait ToSingleHeartRate {
-    fn to_heart_rate_data(&self, person: &str) -> Result<HeartRate, OuraParsingError>;
-}
-
-impl ToSingleHeartRate for OuraHeartRateData {
-    fn to_heart_rate_data(&self, person: &str) -> Result<HeartRate, OuraParsingError> {
-        let timestamp = pollers::parse_oura_timestamp(self.timestamp.as_str())?;
+impl OuraHeartRateData {
+    fn try_to_heart_rate_data(&self, person: &str) -> Result<HeartRate, OuraParsingError> {
+        let timestamp = self.timestamp.try_parse_oura_timestamp()?;
 
         Ok(HeartRate {
             bpm: self.bpm,
-            person_name: String::from(person),
-            source: HeartRateSource::from_str(self.source.as_str())?,
+            person_name: person.to_owned(),
+            source: self.source.parse()?,
             timestamp,
         })
     }
 }
 
-pub trait ToMultipleHeartRate {
-    fn to_heart_rate_data(&self, person: &str) -> Result<Vec<HeartRate>, OuraParsingError>;
-}
-
-impl ToMultipleHeartRate for OuraSleepDocument {
-    fn to_heart_rate_data(&self, person: &str) -> Result<Vec<HeartRate>, OuraParsingError> {
-        let timestamp_start = pollers::parse_oura_timestamp(self.heart_rate.timestamp.as_str())?;
+impl OuraSleepDocument {
+    pub fn try_to_heart_rate_data(&self, person: &str) -> Result<Vec<HeartRate>, OuraParsingError> {
         let heart_rate_measurement_interval_in_seconds = self.heart_rate.interval.round() as i64;
 
-        let heart_rate_data: Vec<HeartRate> = self
-            .heart_rate
-            .items
-            .iter()
-            .filter_map(|item| item.map(|heart_rate_item| heart_rate_item.round() as u8))
-            .scan(timestamp_start, |previous_timestamp, heart_rate| {
-                let timestamp = previous_timestamp.add(chrono::Duration::seconds(
-                    heart_rate_measurement_interval_in_seconds,
-                ));
-                *previous_timestamp = timestamp;
+        let mut heart_rate_data: Vec<HeartRate> = Vec::new();
+        let mut timestamp = self.heart_rate.timestamp.try_parse_oura_timestamp()?;
 
-                Some(HeartRate {
-                    bpm: heart_rate,
-                    person_name: String::from(person),
+        for heart_rate_item in &self.heart_rate.items {
+            if let Some(heart_rate) = heart_rate_item {
+                heart_rate_data.push(HeartRate {
+                    bpm: heart_rate.round() as u8,
+                    person_name: person.to_owned(),
                     source: HeartRateSource::Sleep,
                     timestamp,
-                })
-            })
-            .collect();
+                });
+            }
+
+            timestamp = timestamp.add(chrono::Duration::seconds(
+                heart_rate_measurement_interval_in_seconds,
+            ));
+        }
 
         Ok(heart_rate_data)
     }
@@ -116,11 +104,9 @@ pub async fn poll_heart_rate_data(
     let heart_rate_data: Vec<OuraData> = response?
         .data
         .iter()
-        .map(|raw| match raw.to_heart_rate_data(&person.name) {
+        .map(|raw| match raw.try_to_heart_rate_data(&person.name) {
             Ok(data) => OuraData::HeartRate(data),
-            Err(parsing_error) => OuraData::Error {
-                message: format!("{}", parsing_error),
-            },
+            Err(parsing_error) => OuraData::from_oura_parsing_error(parsing_error),
         })
         .collect();
 

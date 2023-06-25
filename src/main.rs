@@ -33,7 +33,6 @@ async fn main() {
                 .poll_oura_data(&start_time, &end_time)
                 .chunks(10)
                 .for_each_concurrent(None, |data| async {
-                    println!("{:?} DATA", data);
                     match tx.send(data) {
                         Ok(_) => {}
                         Err(e) => {

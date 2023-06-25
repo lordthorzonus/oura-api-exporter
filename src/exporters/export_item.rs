@@ -38,7 +38,10 @@ pub fn map_oura_data_to_export_items(oura_data: OuraData) -> Vec<ExportItem> {
         OuraData::HeartRateVariability(hrv) => {
             vec![]
         }
-        OuraData::Sleep => {
+        OuraData::Sleep(sleep) => {
+            vec![]
+        }
+        OuraData::SleepPhase(sleep_phase) => {
             vec![]
         }
         OuraData::Activity => {

@@ -12,8 +12,6 @@ use reqwest::{Error as ReqwestError, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-pub const OURA_API_DATETIME_FORMAT: &'static str = "%Y-%m-%dT%H:%M:%S%.f%z";
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OuraApiResponse<T> {
     pub data: Vec<T>,
