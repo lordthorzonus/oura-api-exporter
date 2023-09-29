@@ -8,13 +8,14 @@ mod sleep_phase;
 use crate::config::OuraPerson;
 use crate::pollers::errors::OuraParsingError;
 use crate::pollers::hrv::HeartRateVariability;
-use crate::pollers::sleep::{poll_sleep_data, Sleep};
+use crate::pollers::sleep::{poll_sleep_data};
 use crate::pollers::sleep_phase::SleepPhase;
 use chrono::{DateTime, Utc};
 use futures::stream::{select, select_all};
 use futures::{stream, FutureExt, Stream, StreamExt};
 use heart_rate::poll_heart_rate_data;
 pub use heart_rate::HeartRate;
+pub use sleep::Sleep;
 
 #[derive(Debug)]
 pub enum OuraData {

@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use crate::config::OuraPerson;
 use crate::oura_api::{get_sleep_documents, OuraApiError, OuraSleepDocument};
 use crate::pollers::dates::TryOuraTimeStringParsing;
@@ -31,29 +32,43 @@ impl std::str::FromStr for SleepType {
     }
 }
 
+impl Display for SleepType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sleep_type = match self {
+            SleepType::Deleted => "deleted",
+            SleepType::Sleep => "sleep",
+            SleepType::LongSleep => "long_sleep",
+            SleepType::LateNap => "late_nap",
+            SleepType::Rest => "rest",
+        };
+
+        write!(f, "{}", sleep_type)
+    }
+}
+
 #[derive(Debug)]
 pub struct Sleep {
-    id: String,
-    average_breath: f32,
-    average_hrv: i16,
-    awake_time: i16,
-    bedtime_end: DateTime<Utc>,
-    bedtime_start: DateTime<Utc>,
-    day: NaiveDate,
-    deep_sleep_duration: i16,
-    efficiency: i16,
-    latency: i16,
-    light_sleep_duration: i16,
-    low_battery_alert: bool,
-    lowest_heart_rate: i16,
-    readiness_score_delta: Option<f32>,
-    rem_sleep_duration: i16,
-    restless_periods: i16,
-    sleep_score_delta: Option<f32>,
-    time_in_bed: i16,
-    total_sleep_duration: i16,
-    sleep_type: SleepType,
-    person_name: String,
+    pub id: String,
+    pub average_breath: f32,
+    pub average_hrv: i16,
+    pub awake_time: i16,
+    pub bedtime_end: DateTime<Utc>,
+    pub bedtime_start: DateTime<Utc>,
+    pub day: NaiveDate,
+    pub deep_sleep_duration: i16,
+    pub efficiency: i16,
+    pub latency: i16,
+    pub light_sleep_duration: i16,
+    pub low_battery_alert: bool,
+    pub lowest_heart_rate: i16,
+    pub readiness_score_delta: Option<f32>,
+    pub rem_sleep_duration: i16,
+    pub restless_periods: i16,
+    pub sleep_score_delta: Option<f32>,
+    pub time_in_bed: i16,
+    pub total_sleep_duration: i16,
+    pub sleep_type: SleepType,
+    pub person_name: String,
 }
 
 impl OuraSleepDocument {
@@ -87,7 +102,7 @@ impl OuraSleepDocument {
 fn parse_sleep_data<'a>(
     person_name: &'a str,
     sleep_documents: &'a Vec<OuraSleepDocument>,
-) -> impl Iterator<Item = OuraData> + 'a {
+) -> impl Iterator<Item=OuraData> + 'a {
     return sleep_documents
         .iter()
         .map(|document| match document.try_to_sleep_data(person_name) {
@@ -99,7 +114,7 @@ fn parse_sleep_data<'a>(
 fn parse_hrv_data<'a>(
     person_name: &'a str,
     sleep_documents: &'a Vec<OuraSleepDocument>,
-) -> impl Iterator<Item = OuraData> + 'a {
+) -> impl Iterator<Item=OuraData> + 'a {
     sleep_documents.iter().flat_map(|document| {
         let parsing_result = document.try_to_heart_rate_variability(person_name);
         let oura_data = match parsing_result {
@@ -117,7 +132,7 @@ fn parse_hrv_data<'a>(
 fn parse_heart_rate_data<'a>(
     person_name: &'a str,
     sleep_documents: &'a Vec<OuraSleepDocument>,
-) -> impl Iterator<Item = OuraData> + 'a {
+) -> impl Iterator<Item=OuraData> + 'a {
     sleep_documents.iter().flat_map(|document| {
         let parsing_result = document.try_to_heart_rate_data(person_name);
         let oura_data = match parsing_result {
@@ -131,7 +146,7 @@ fn parse_heart_rate_data<'a>(
 fn parse_sleep_phase_data<'a>(
     person_name: &'a str,
     sleep_documents: &'a Vec<OuraSleepDocument>,
-) -> impl Iterator<Item = OuraData> + 'a {
+) -> impl Iterator<Item=OuraData> + 'a {
     sleep_documents.iter().flat_map(|document| {
         return document.try_extract_sleep_phases(person_name).map_or_else(
             |err| vec![OuraData::from_oura_parsing_error(err)],

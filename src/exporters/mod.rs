@@ -2,13 +2,12 @@ mod export_item;
 mod influx_db_measurement;
 
 use crate::pollers::OuraData;
-use export_item::{map_oura_data_to_export_items, ExportItem};
+use export_item::{ ExportItem};
 use futures::{stream, Stream, StreamExt};
 use influxdb2::api::write::TimestampPrecision;
 use influxdb2::models::DataPoint;
 use influxdb2::Client;
 use itertools::{Either, Itertools};
-use std::sync::Arc;
 
 pub async fn export_oura_data(
     oura_data_stream: impl Stream<Item = OuraData>,
@@ -16,7 +15,10 @@ pub async fn export_oura_data(
 ) {
     oura_data_stream
         .flat_map(|oura_data| {
-            return stream::iter(map_oura_data_to_export_items(oura_data));
+            let data: &OuraData = &oura_data;
+            let export_items: Vec<ExportItem> = data.into();
+
+            return stream::iter(export_items);
         })
         .chunks(10)
         .for_each_concurrent(None, |export_items| async move {
@@ -24,12 +26,13 @@ pub async fn export_oura_data(
                 .into_iter()
                 .partition_map(|export_item| match export_item {
                     ExportItem::MQTT { topic, payload } => Either::Right((topic, payload)),
-                    ExportItem::InfluxDB(data_point) => Either::Left(data_point.into_data_point()),
+                    ExportItem::InfluxDB(data_point) => Either::Left(data_point.try_into()),
                 });
 
             if let Some((client, bucket)) = influxdb_env {
                 println!("Influx datapoints: {:?}", influxdb_data_points);
-                write_to_influxdb(influxdb_data_points, client, bucket).await
+                let data_points = influxdb_data_points.filter_map(|data_point| data_point.ok());
+                write_to_influxdb(data_points, client, bucket).await
             }
 
             println!("MQTT export item: {:?}", mqtt_export_items.last());

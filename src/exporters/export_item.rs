@@ -1,8 +1,5 @@
 use crate::exporters::influx_db_measurement::InfluxDBMeasurement;
 use crate::pollers::{HeartRate, OuraData};
-use chrono::{DateTime, Utc};
-use futures::{stream, Stream};
-use influxdb2::models::{DataPoint, WriteDataPoint};
 use std::fmt;
 
 #[derive(Debug)]
@@ -29,40 +26,47 @@ pub enum ExportItem {
     InfluxDB(InfluxDBMeasurement),
 }
 
-pub fn map_oura_data_to_export_items(oura_data: OuraData) -> Vec<ExportItem> {
-    return match oura_data {
-        OuraData::HeartRate(heart_rate_data) => {
-            println!("DATA: {:?}", heart_rate_data);
-            map_heart_rate_data_to_export_items(&heart_rate_data)
-        }
-        OuraData::HeartRateVariability(hrv) => {
-            vec![]
-        }
-        OuraData::Sleep(sleep) => {
-            vec![]
-        }
-        OuraData::SleepPhase(sleep_phase) => {
-            vec![]
-        }
-        OuraData::Activity => {
-            vec![]
-        }
-        OuraData::Readiness => {
-            vec![]
-        }
-        OuraData::Error { message } => {
-            eprintln!("Cannot map OuraDataError into export item: {}", message);
-            vec![]
-        }
-    };
+impl From<&OuraData> for Vec<ExportItem> {
+    fn from(oura_data: &OuraData) -> Self {
+
+        return match oura_data {
+            OuraData::HeartRate(heart_rate_data) => {
+                println!("DATA: {:?}", heart_rate_data);
+                heart_rate_data.into()
+            }
+            OuraData::HeartRateVariability(hrv) => {
+                vec![]
+            }
+            OuraData::Sleep(sleep) => {
+                vec![]
+            }
+            OuraData::SleepPhase(sleep_phase) => {
+                vec![]
+            }
+            OuraData::Activity => {
+                vec![]
+            }
+            OuraData::Readiness => {
+                vec![]
+            }
+            OuraData::Error { message } => {
+                eprintln!("Cannot map OuraDataError into export item: {}", message);
+                vec![]
+            }
+        };
+
+    }
 }
 
-fn map_heart_rate_data_to_export_items(heart_rate_data: &HeartRate) -> Vec<ExportItem> {
-    return vec![
-        ExportItem::MQTT {
+impl From<&HeartRate> for Vec<ExportItem> {
+    fn from(heart_rate_data: &HeartRate) -> Self {
+        return vec![
+            ExportItem::MQTT {
             topic: MqttTopic::HeartRate,
             payload: serde_json::to_string(heart_rate_data).unwrap(),
-        },
-        ExportItem::InfluxDB(InfluxDBMeasurement::from(heart_rate_data)),
-    ];
+            },
+            ExportItem::InfluxDB(heart_rate_data.into()),
+        ];
+    }
 }
+
