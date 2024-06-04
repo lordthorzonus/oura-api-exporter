@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct OuraSleepDocument {
     pub id: String,
     pub average_breath: f32,
@@ -32,7 +32,7 @@ pub struct OuraSleepDocument {
     pub sleep_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct OuraSleepMeasurement {
     pub interval: f32,
     pub items: Vec<Option<f32>>,

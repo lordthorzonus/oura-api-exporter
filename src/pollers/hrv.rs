@@ -1,5 +1,4 @@
 use crate::oura_api::OuraSleepDocument;
-use crate::pollers;
 use crate::pollers::dates::TryOuraTimeStringParsing;
 use crate::pollers::errors::OuraParsingError;
 use chrono::{DateTime, Utc};
@@ -39,5 +38,50 @@ impl OuraSleepDocument {
         }
 
         Ok(hrv_data)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::oura_api::{OuraSleepDocument, OuraSleepMeasurement};
+    use chrono::{Utc, DateTime};
+
+    #[test]
+    fn test_try_to_heart_rate_variability() {
+        let sleep_document = OuraSleepDocument {
+            id: "test_id".to_owned(),
+            hrv: OuraSleepMeasurement {
+                interval: 60.0,
+                timestamp: "2021-01-01T00:00:00+00:00".to_owned(),
+                items: vec![Some(50.0), Some(60.0), None, Some(70.0)],
+            },
+            ..Default::default()
+        };
+
+        let hrv_data = sleep_document
+            .try_to_heart_rate_variability("test_person")
+            .unwrap();
+
+        assert_eq!(hrv_data.len(), 3);
+        assert_eq!(hrv_data[0].ms, 50);
+        assert_eq!(hrv_data[1].ms, 60);
+        assert_eq!(hrv_data[2].ms, 70);
+
+        assert_eq!(hrv_data[0].person_name, "test_person");
+        assert_eq!(hrv_data[1].person_name, "test_person");
+        assert_eq!(hrv_data[2].person_name, "test_person");
+
+        assert_eq!(
+            hrv_data[0].timestamp,
+            "2021-01-01T00:00:00+00:00".parse::<DateTime<Utc>>().unwrap()
+        );
+        assert_eq!(
+            hrv_data[1].timestamp,
+            "2021-01-01T00:01:00+00:00".parse::<DateTime<Utc>>().unwrap()
+        );
+        assert_eq!(
+            hrv_data[2].timestamp,
+            "2021-01-01T00:03:00+00:00".parse::<DateTime<Utc>>().unwrap()
+        );
     }
 }

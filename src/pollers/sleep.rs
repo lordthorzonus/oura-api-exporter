@@ -1,10 +1,10 @@
-use std::fmt::Display;
 use crate::config::OuraPerson;
 use crate::oura_api::{get_sleep_documents, OuraApiError, OuraSleepDocument};
 use crate::pollers::dates::TryOuraTimeStringParsing;
 use crate::pollers::errors::OuraParsingError;
 use crate::pollers::OuraData;
 use chrono::{DateTime, NaiveDate, Utc};
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum SleepType {
@@ -102,7 +102,7 @@ impl OuraSleepDocument {
 fn parse_sleep_data<'a>(
     person_name: &'a str,
     sleep_documents: &'a Vec<OuraSleepDocument>,
-) -> impl Iterator<Item=OuraData> + 'a {
+) -> impl Iterator<Item = OuraData> + 'a {
     return sleep_documents
         .iter()
         .map(|document| match document.try_to_sleep_data(person_name) {
@@ -114,7 +114,7 @@ fn parse_sleep_data<'a>(
 fn parse_hrv_data<'a>(
     person_name: &'a str,
     sleep_documents: &'a Vec<OuraSleepDocument>,
-) -> impl Iterator<Item=OuraData> + 'a {
+) -> impl Iterator<Item = OuraData> + 'a {
     sleep_documents.iter().flat_map(|document| {
         let parsing_result = document.try_to_heart_rate_variability(person_name);
         let oura_data = match parsing_result {
@@ -132,7 +132,7 @@ fn parse_hrv_data<'a>(
 fn parse_heart_rate_data<'a>(
     person_name: &'a str,
     sleep_documents: &'a Vec<OuraSleepDocument>,
-) -> impl Iterator<Item=OuraData> + 'a {
+) -> impl Iterator<Item = OuraData> + 'a {
     sleep_documents.iter().flat_map(|document| {
         let parsing_result = document.try_to_heart_rate_data(person_name);
         let oura_data = match parsing_result {
@@ -146,7 +146,7 @@ fn parse_heart_rate_data<'a>(
 fn parse_sleep_phase_data<'a>(
     person_name: &'a str,
     sleep_documents: &'a Vec<OuraSleepDocument>,
-) -> impl Iterator<Item=OuraData> + 'a {
+) -> impl Iterator<Item = OuraData> + 'a {
     sleep_documents.iter().flat_map(|document| {
         return document.try_extract_sleep_phases(person_name).map_or_else(
             |err| vec![OuraData::from_oura_parsing_error(err)],
@@ -174,5 +174,6 @@ pub async fn poll_sleep_data<'a>(
         .chain(sleep_data)
         .chain(sleep_phase_data)
         .collect();
+
     return Ok(oura_data);
 }

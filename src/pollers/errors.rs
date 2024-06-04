@@ -1,5 +1,5 @@
 use std::error;
-use std::fmt::{write, Display};
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub struct OuraParsingError {

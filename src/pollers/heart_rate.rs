@@ -10,7 +10,7 @@ use std::fmt;
 use std::ops::Add;
 use std::str::FromStr;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum HeartRateSource {
     Awake,
     Rest,
@@ -48,7 +48,7 @@ impl fmt::Display for HeartRateSource {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct HeartRate {
     pub bpm: u8,
     pub source: HeartRateSource,
@@ -111,4 +111,110 @@ pub async fn poll_heart_rate_data(
         .collect();
 
     return Ok(heart_rate_data);
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        oura_api::{OuraSleepDocument, OuraSleepMeasurement},
+        pollers::heart_rate::HeartRateSource,
+    };
+
+    #[test]
+    fn test_heart_rate_source_from_str() {
+        assert_eq!(
+            "awake".parse::<HeartRateSource>().unwrap(),
+            HeartRateSource::Awake
+        );
+        assert_eq!(
+            "rest".parse::<HeartRateSource>().unwrap(),
+            HeartRateSource::Rest
+        );
+        assert_eq!(
+            "sleep".parse::<HeartRateSource>().unwrap(),
+            HeartRateSource::Sleep
+        );
+        assert_eq!(
+            "session".parse::<HeartRateSource>().unwrap(),
+            HeartRateSource::Session
+        );
+        assert_eq!(
+            "live".parse::<HeartRateSource>().unwrap(),
+            HeartRateSource::Live
+        );
+
+        let error_source = "not-existing".parse::<HeartRateSource>().unwrap_err();
+        assert_eq!(
+            error_source.message,
+            "Unknown HeartRateSource: not-existing"
+        );
+    }
+
+    #[test]
+    fn test_try_oura_heart_rate_data_to_heart_rate_data() {
+        use crate::oura_api::OuraHeartRateData;
+        use crate::pollers::heart_rate::{HeartRate, HeartRateSource};
+        use chrono::{DateTime, Utc};
+
+        let heart_rate_data = OuraHeartRateData {
+            bpm: 60,
+            source: "rest".to_owned(),
+            timestamp: "2021-01-01T00:00:00Z".to_owned(),
+        };
+
+        let heart_rate = heart_rate_data.try_to_heart_rate_data("test").unwrap();
+        assert_eq!(
+            heart_rate,
+            HeartRate {
+                bpm: 60,
+                source: HeartRateSource::Rest,
+                timestamp: DateTime::parse_from_rfc3339("2021-01-01T00:00:00Z")
+                    .unwrap()
+                    .with_timezone(&Utc),
+                person_name: "test".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_try_oura_sleep_document_to_heart_rate_data() {
+        let oura_sleep_document = OuraSleepDocument {
+            id: "id".to_owned(),
+            heart_rate: OuraSleepMeasurement {
+                interval: 1.0,
+                items: vec![Some(60.0), Some(61.0), Some(62.0)],
+                timestamp: "2023-06-22T15:00:00+03:00".to_string(),
+            },
+            ..Default::default()
+        };
+
+        let heart_rate_data = oura_sleep_document
+            .try_to_heart_rate_data("person")
+            .unwrap();
+        assert_eq!(heart_rate_data.len(), 3);
+
+        assert_eq!(heart_rate_data[0].bpm, 60);
+        assert_eq!(heart_rate_data[0].person_name, "person");
+        assert_eq!(heart_rate_data[0].source, HeartRateSource::Sleep);
+        assert_eq!(
+            heart_rate_data[0].timestamp,
+            chrono::DateTime::parse_from_rfc3339("2023-06-22T15:00:00+03:00").unwrap()
+        );
+
+        assert_eq!(heart_rate_data[1].bpm, 61);
+        assert_eq!(heart_rate_data[1].person_name, "person");
+        assert_eq!(heart_rate_data[1].source, HeartRateSource::Sleep);
+        assert_eq!(
+            heart_rate_data[1].timestamp,
+            chrono::DateTime::parse_from_rfc3339("2023-06-22T15:00:01+03:00").unwrap()
+        );
+
+        assert_eq!(heart_rate_data[2].bpm, 62);
+        assert_eq!(heart_rate_data[2].person_name, "person");
+        assert_eq!(heart_rate_data[2].source, HeartRateSource::Sleep);
+        assert_eq!(
+            heart_rate_data[2].timestamp,
+            chrono::DateTime::parse_from_rfc3339("2023-06-22T15:00:02+03:00").unwrap()
+        );
+    }
 }

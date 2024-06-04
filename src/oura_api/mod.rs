@@ -4,7 +4,7 @@ mod sleep;
 use chrono::DateTime;
 use chrono::Utc;
 pub use heart_rate::OuraHeartRateData;
-pub use sleep::OuraSleepDocument;
+pub use sleep::{OuraContributors, OuraReadiness, OuraSleepDocument, OuraSleepMeasurement};
 use std::error;
 
 use reqwest::header::AUTHORIZATION;
