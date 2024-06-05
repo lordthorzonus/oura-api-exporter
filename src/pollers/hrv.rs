@@ -1,6 +1,6 @@
 use crate::oura_api::OuraSleepDocument;
 use crate::pollers::dates::TryOuraTimeStringParsing;
-use crate::pollers::errors::OuraParsingError;
+use crate::pollers::errors::OuraPollingError;
 use chrono::{DateTime, Utc};
 use std::ops::Add;
 
@@ -15,7 +15,7 @@ impl OuraSleepDocument {
     pub fn try_to_heart_rate_variability(
         &self,
         person: &str,
-    ) -> Result<Vec<HeartRateVariability>, OuraParsingError> {
+    ) -> Result<Vec<HeartRateVariability>, OuraPollingError> {
         let hrv_measurement_interval_in_seconds = self.hrv.interval.round() as i64;
 
         let mut hrv_data: Vec<HeartRateVariability> = Vec::new();

@@ -2,11 +2,12 @@ mod dates;
 mod errors;
 mod heart_rate;
 mod hrv;
+mod readiness;
 mod sleep;
 mod sleep_phase;
 
 use crate::config::OuraPerson;
-use crate::pollers::errors::OuraParsingError;
+use crate::oura_api::OuraApiError;
 use crate::pollers::sleep::poll_sleep_data;
 use chrono::{DateTime, Utc};
 use futures::stream::{select, select_all};
@@ -14,9 +15,12 @@ use futures::{stream, FutureExt, Stream, StreamExt};
 use heart_rate::poll_heart_rate_data;
 
 pub use heart_rate::HeartRate;
-pub use sleep::Sleep;
 pub use hrv::HeartRateVariability;
+pub use readiness::Readiness;
+pub use sleep::Sleep;
 pub use sleep_phase::{SleepPhase, SleepPhaseType};
+
+use self::errors::OuraPollingError;
 
 #[derive(Debug)]
 pub enum OuraData {
@@ -25,12 +29,20 @@ pub enum OuraData {
     Sleep(Sleep),
     SleepPhase(SleepPhase),
     Activity,
-    Readiness,
+    Readiness(Readiness),
     Error { message: String },
 }
 
-impl OuraData {
-    fn from_oura_parsing_error(error: OuraParsingError) -> OuraData {
+impl From<OuraPollingError> for OuraData {
+    fn from(error: OuraPollingError) -> OuraData {
+        return OuraData::Error {
+            message: format!("{}", error),
+        };
+    }
+}
+
+impl From<OuraApiError> for OuraData {
+    fn from(error: OuraApiError) -> OuraData {
         return OuraData::Error {
             message: format!("{}", error),
         };
@@ -62,9 +74,7 @@ impl Poller<'_> {
 
         return pollers.flat_map(|data| match data {
             Ok(data) => stream::iter(data),
-            Err(err) => stream::iter(vec![OuraData::Error {
-                message: format!("{}", err),
-            }]),
+            Err(err) => stream::iter(vec![OuraData::from(err)]),
         });
     }
 }

@@ -3,14 +3,19 @@ mod sleep;
 
 use chrono::DateTime;
 use chrono::Utc;
-pub use heart_rate::OuraHeartRateData;
-pub use sleep::{OuraContributors, OuraReadiness, OuraSleepDocument, OuraSleepMeasurement};
-use std::error;
-
+use log::debug;
 use reqwest::header::AUTHORIZATION;
+use reqwest::Response;
 use reqwest::{Error as ReqwestError, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use thiserror::Error;
+
+
+pub use sleep::OuraSleepDocument;
+pub use heart_rate::OuraHeartRateData;
+
+#[cfg(test)]
+pub use sleep::{OuraSleepMeasurement, OuraReadiness, OuraContributors};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OuraApiResponse<T> {
@@ -18,9 +23,12 @@ pub struct OuraApiResponse<T> {
     next_token: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum OuraApiError {
-    RequestError(ReqwestError),
+    #[error("Failed to send request to Oura API: {0}")]
+    RequestError(#[from] ReqwestError),
+
+    #[error("Received error response from Oura API when requesting url: {url}. Error: \"{error}\", status: {status_code:?}")]
     ResponseError {
         status_code: Option<StatusCode>,
         error: String,
@@ -28,43 +36,32 @@ pub enum OuraApiError {
     },
 }
 
-impl Display for OuraApiError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            OuraApiError::RequestError(e) => {
-                write!(f, "Failed to send request to Oura API: {}", e)
-            }
-            OuraApiError::ResponseError {
-                status_code,
-                error,
-                url,
-            } => {
-                write!(
-                    f,
-                    "Received error response from Oura API when requesting url: {}. Error {}, status: {:?}",
-                    url, error, status_code
-                )
-            }
-        }
-    }
-}
+async fn map_response_into_response_error(response: Response) -> OuraApiError {
+    let status_code = response.status();
+    let url = response.url().to_string();
+    let error = response
+        .text()
+        .await
+        .unwrap_or(String::from("Unknown error response from Oura API"));
 
-impl error::Error for OuraApiError {}
+    return OuraApiError::ResponseError {
+        status_code: Some(status_code),
+        error: error.to_string(),
+        url: url.to_string(),
+    };
+}
 
 pub async fn get_heart_rate_data(
     access_token: &String,
     start_time: &DateTime<Utc>,
     end_time: &DateTime<Utc>,
 ) -> Result<OuraApiResponse<OuraHeartRateData>, OuraApiError> {
-    println!(
-        "Getting heart rate data from Oura API, start: {}, end: {}",
-        start_time, end_time
-    );
     let url = "https://api.ouraring.com/v2/usercollection/heartrate";
     let query = &[
         ("start_datetime", start_time.to_rfc3339()),
         ("end_datetime", end_time.to_rfc3339()),
     ];
+
     return oura_get_request(&access_token, url, query).await;
 }
 
@@ -78,6 +75,7 @@ pub async fn get_sleep_documents(
         ("start_date", start_time.format("%Y-%m-%d").to_string()),
         ("end_date", end_time.format("%Y-%m-%d").to_string()),
     ];
+
     return oura_get_request(&access_token, url, query).await;
 }
 
@@ -87,9 +85,11 @@ async fn oura_get_request<TEntity, TQuery>(
     query: &TQuery,
 ) -> Result<TEntity, OuraApiError>
 where
-    TEntity: serde::de::DeserializeOwned,
-    TQuery: serde::Serialize,
+    TEntity: serde::de::DeserializeOwned + std::fmt::Debug,
+    TQuery: serde::Serialize + std::fmt::Debug,
 {
+    debug!("Sending request to Oura API: url={} query={:?}", url, query);
+
     let client = reqwest::Client::new();
     let response = client
         .get(url)
@@ -99,14 +99,13 @@ where
         .await
         .map_err(OuraApiError::RequestError)?;
 
-    if !response.status().is_success() {
-        return Err(OuraApiError::ResponseError {
-            status_code: Some(response.status()),
-            error: response.text().await.unwrap(),
-            url: url.to_string(),
-        });
+    let response_status = response.status();
+
+    if !response_status.is_success() {
+        return Err(map_response_into_response_error(response).await);
     }
 
+    let response_url = response.url().to_string();
     let return_result =
         response
             .json::<TEntity>()
@@ -116,6 +115,11 @@ where
                 error: format!("{}", e),
                 url: url.to_string(),
             })?;
+
+    debug!(
+        "Received response from Oura API: url={} status={:?} body={:#?}",
+        response_url, response_status, return_result
+    );
 
     return Ok(return_result);
 }

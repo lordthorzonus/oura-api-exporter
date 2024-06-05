@@ -1,21 +1,38 @@
-use std::error;
-use std::fmt::Display;
+use thiserror::Error;
 
-#[derive(Debug)]
-pub struct OuraParsingError {
-    pub message: String,
+#[derive(Debug, Error)]
+pub enum OuraPollingError {
+    #[error("Cannot parse Oura API timestamp '{timestamp}': {source}")]
+    TimestampParsingError{
+        timestamp: String,
+        #[source]
+        source: chrono::ParseError,
+    },
+
+    #[error("Cannot parse Oura API date '{date}': {source}")]
+    DateParsingError{
+        date: String,
+        #[source]
+        source: chrono::ParseError,
+    },
+
+    #[error("Unknown {enum_name}: '{variant}'")]
+    UnknownEnumVariantError {
+        enum_name: String,
+        variant: String,
+    },
+
+    #[error("No readiness data found for sleep document with id: '{sleep_id}'")]
+    NoReadinessDataFoundError {
+        sleep_id: String,
+    },
+
+    #[error("No readiness score found for sleep document with id: '{sleep_id}'")]
+    NoReadinessScoreFoundError {
+        sleep_id: String,
+    },
+
+    #[error("Something went wrong when polling Oura data: {0}")]
+    UnexpectedError(String),
 }
 
-impl Display for OuraParsingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Error while parsing Oura data from API: \"{}\"",
-            self.message
-        )
-    }
-}
-
-impl error::Error for OuraParsingError {}
-
-fn test() {}

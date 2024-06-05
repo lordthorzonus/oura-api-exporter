@@ -41,20 +41,20 @@ pub struct OuraSleepMeasurement {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OuraReadiness {
-    contributors: OuraContributors,
-    score: i16,
-    temperature_deviation: Option<f32>,
-    temperature_trend_deviation: f32,
+    pub contributors: OuraContributors,
+    pub score: Option<u8>,
+    pub temperature_deviation: Option<f32>,
+    pub temperature_trend_deviation: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OuraContributors {
-    activity_balance: i16,
-    body_temperature: i16,
-    hrv_balance: i16,
-    previous_day_activity: i16,
-    previous_night: i16,
-    recovery_index: i16,
-    resting_heart_rate: i16,
-    sleep_balance: i16,
+    pub activity_balance: u8,
+    pub body_temperature: u8,
+    pub hrv_balance: u8,
+    pub previous_day_activity: u8,
+    pub previous_night: u8,
+    pub recovery_index: u8,
+    pub resting_heart_rate: u8,
+    pub sleep_balance: u8,
 }

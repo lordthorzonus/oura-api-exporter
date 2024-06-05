@@ -1,6 +1,7 @@
 use chrono::{Duration, Utc};
-use futures::{stream, FutureExt, StreamExt};
+use futures::{stream, StreamExt};
 use influxdb2::Client;
+use log::{error, info};
 use std::sync::Arc;
 
 mod config;
@@ -13,11 +14,21 @@ use config::InfluxDB;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
+    let config = match config::get_config() {
+        Ok(config) => config,
+        Err(e) => {
+            error!("Error reading configuration: {}", e);
+            return;
+        }
+    };
+
     let Config {
         influxdb,
         poller_interval,
         persons,
-    } = config::get_config();
+    } = config;
     let influxdb_env = Arc::new(get_influxdb_env(influxdb));
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -29,24 +40,24 @@ async fn main() {
         loop {
             let start_time = Utc::now() - Duration::seconds(seconds_in_past) - Duration::hours(64);
             let end_time = Utc::now();
-            let stream = poller
+            let _ = poller
                 .poll_oura_data(&start_time, &end_time)
-                .chunks(10)
+                .chunks(100)
                 .for_each_concurrent(None, |data| async {
+                    info!("Sending data for export. Got {} items", data.len());
+
                     match tx.send(data) {
                         Ok(_) => {}
                         Err(e) => {
-                            println!("Error sending data to channel: {}", e);
+                            error!("Error sending data to channel: {}", e);
                         }
                     }
-                });
-            stream.await;
-            println!("Polling loop ended");
+                }).await;
+
+            info!("Polling ended retrying in {} seconds", sleep_time);
             tokio::time::sleep(tokio::time::Duration::from_secs(sleep_time)).await
         }
-    })
-    .await
-    .unwrap();
+    });
 
     while let Some(data) = rx.recv().await {
         exporters::export_oura_data(stream::iter(data), &influxdb_env).await

@@ -1,5 +1,6 @@
 use crate::pollers::HeartRate;
 use crate::pollers::HeartRateVariability;
+use crate::pollers::Readiness;
 use crate::pollers::Sleep;
 use crate::pollers::SleepPhase;
 use crate::pollers::SleepPhaseType;
@@ -125,12 +126,55 @@ pub struct HeartRateVariabilityDataPoint {
     person_name: String,
 }
 
+#[derive(Debug, Default, WriteDataPoint)]
+pub struct ReadinessDataPoint {
+    #[influxdb(field)]
+    readiness_score: i64,
+
+    #[influxdb(field)]
+    temperature_deviation: Option<f64>,
+
+    #[influxdb(field)]
+    temperature_trend_deviation: f64,
+
+    #[influxdb(field)]
+    activity_balance_contribution: i64,
+
+    #[influxdb(field)]
+    body_temperature_contribution: i64,
+
+    #[influxdb(field)]
+    hrv_balance_contribution: i64,
+
+    #[influxdb(field)]
+    previous_day_activity_contribution: i64,
+
+    #[influxdb(field)]
+    previous_night_contribution: i64,
+
+    #[influxdb(field)]
+    recovery_index_contribution: i64,
+
+    #[influxdb(field)]
+    resting_heart_rate_contribution: i64,
+
+    #[influxdb(field)]
+    sleep_balance_contribution: i64,
+
+    #[influxdb(timestamp)]
+    timestamp: i64,
+
+    #[influxdb(tag)]
+    person_name: String,
+}
+
 #[derive(Debug)]
 pub enum InfluxDBMeasurement {
     HeartRate(HeartRateDataPoint),
     SleepPhase(SleepPhaseDataPoint),
     Sleep(SleepDataPoint),
     HeartRateVariability(HeartRateVariabilityDataPoint),
+    Readiness(ReadinessDataPoint),
 }
 
 impl WriteDataPoint for InfluxDBMeasurement {
@@ -143,6 +187,7 @@ impl WriteDataPoint for InfluxDBMeasurement {
             InfluxDBMeasurement::SleepPhase(data) => data.write_data_point_to(w),
             InfluxDBMeasurement::Sleep(data) => data.write_data_point_to(w),
             InfluxDBMeasurement::HeartRateVariability(data) => data.write_data_point_to(w),
+            InfluxDBMeasurement::Readiness(data) => data.write_data_point_to(w),
         }
     }
 }
@@ -237,6 +282,28 @@ impl TryFrom<&SleepPhase> for InfluxDBMeasurement {
             phase: sleep_phase.into(),
             timestamp: value.timestamp.timestamp(),
             sleep_id: value.sleep_id.to_string(),
+        }))
+    }
+}
+
+impl TryFrom<&Readiness> for InfluxDBMeasurement {
+    type Error = MeasurementConvertingError;
+
+    fn try_from(value: &Readiness) -> Result<InfluxDBMeasurement, MeasurementConvertingError> {
+        Ok(InfluxDBMeasurement::Readiness(ReadinessDataPoint {
+            readiness_score: value.score.into(),
+            temperature_deviation: value.temperature_deviation.map(|v| v.into()),
+            temperature_trend_deviation: value.temperature_trend_deviation.into(),
+            activity_balance_contribution: value.contributors.activity_balance.into(),
+            body_temperature_contribution: value.contributors.body_temperature.into(),
+            hrv_balance_contribution: value.contributors.hrv_balance.into(),
+            previous_day_activity_contribution: value.contributors.previous_day_activity.into(),
+            previous_night_contribution: value.contributors.previous_night.into(),
+            recovery_index_contribution: value.contributors.recovery_index.into(),
+            resting_heart_rate_contribution: value.contributors.resting_heart_rate.into(),
+            sleep_balance_contribution: value.contributors.sleep_balance.into(),
+            timestamp: value.timestamp.timestamp(),
+            person_name: value.person_name.to_string(),
         }))
     }
 }

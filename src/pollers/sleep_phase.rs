@@ -1,6 +1,6 @@
 use crate::oura_api::OuraSleepDocument;
 use crate::pollers::dates::TryOuraTimeStringParsing;
-use crate::pollers::errors::OuraParsingError;
+use crate::pollers::errors::OuraPollingError;
 use chrono::{DateTime, Duration, Utc};
 use std::ops::Add;
 
@@ -21,7 +21,7 @@ pub enum SleepPhaseType {
 }
 
 impl TryFrom<char> for SleepPhaseType {
-    type Error = OuraParsingError;
+    type Error = OuraPollingError;
 
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value {
@@ -29,8 +29,9 @@ impl TryFrom<char> for SleepPhaseType {
             '2' => Ok(SleepPhaseType::LightSleep),
             '3' => Ok(SleepPhaseType::REMSleep),
             '4' => Ok(SleepPhaseType::Awake),
-            _ => Err(OuraParsingError {
-                message: format!("Unknown SleepStage: {}", value),
+            _ => Err(OuraPollingError::UnknownEnumVariantError {
+                enum_name: "SleepPhaseType".to_string(),
+                variant: value.to_string(),
             }),
         }
     }
@@ -40,7 +41,7 @@ impl OuraSleepDocument {
     pub fn try_extract_sleep_phases(
         &self,
         person_name: &str,
-    ) -> Result<Vec<SleepPhase>, OuraParsingError> {
+    ) -> Result<Vec<SleepPhase>, OuraPollingError> {
         let mut timestamp = self.bedtime_start.try_parse_oura_timestamp()?;
         let mut sleep_phases: Vec<SleepPhase> = Vec::new();
 

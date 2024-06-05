@@ -3,8 +3,9 @@ use crate::config::OuraPerson;
 use crate::oura_api::OuraApiError;
 use crate::oura_api::{get_heart_rate_data, OuraHeartRateData, OuraSleepDocument};
 use crate::pollers::dates::TryOuraTimeStringParsing;
-use crate::pollers::errors::OuraParsingError;
+use crate::pollers::errors::OuraPollingError;
 use chrono::{DateTime, Utc};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Add;
@@ -20,7 +21,7 @@ pub enum HeartRateSource {
 }
 
 impl FromStr for HeartRateSource {
-    type Err = OuraParsingError;
+    type Err = OuraPollingError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -29,8 +30,9 @@ impl FromStr for HeartRateSource {
             "sleep" => Ok(HeartRateSource::Sleep),
             "session" => Ok(HeartRateSource::Session),
             "live" => Ok(HeartRateSource::Live),
-            _ => Err(OuraParsingError {
-                message: format!("Unknown HeartRateSource: {}", s),
+            _ => Err(OuraPollingError::UnknownEnumVariantError {
+                enum_name: "HeartRateSource".to_string(),
+                variant: s.to_string(),
             }),
         }
     }
@@ -57,7 +59,7 @@ pub struct HeartRate {
 }
 
 impl OuraHeartRateData {
-    fn try_to_heart_rate_data(&self, person: &str) -> Result<HeartRate, OuraParsingError> {
+    fn try_to_heart_rate_data(&self, person: &str) -> Result<HeartRate, OuraPollingError> {
         let timestamp = self.timestamp.try_parse_oura_timestamp()?;
 
         Ok(HeartRate {
@@ -70,7 +72,7 @@ impl OuraHeartRateData {
 }
 
 impl OuraSleepDocument {
-    pub fn try_to_heart_rate_data(&self, person: &str) -> Result<Vec<HeartRate>, OuraParsingError> {
+    pub fn try_to_heart_rate_data(&self, person: &str) -> Result<Vec<HeartRate>, OuraPollingError> {
         let heart_rate_measurement_interval_in_seconds = self.heart_rate.interval.round() as i64;
 
         let mut heart_rate_data: Vec<HeartRate> = Vec::new();
@@ -100,13 +102,14 @@ pub async fn poll_heart_rate_data(
     start_time: &DateTime<Utc>,
     end_time: &DateTime<Utc>,
 ) -> Result<Vec<OuraData>, OuraApiError> {
+    info!("Polling heart rate data for '{}' from {} to {}", person.name, start_time, end_time);
     let response = get_heart_rate_data(&person.access_token, start_time, end_time).await;
     let heart_rate_data: Vec<OuraData> = response?
         .data
         .iter()
         .map(|raw| match raw.try_to_heart_rate_data(&person.name) {
             Ok(data) => OuraData::HeartRate(data),
-            Err(parsing_error) => OuraData::from_oura_parsing_error(parsing_error),
+            Err(parsing_error) => OuraData::from(parsing_error),
         })
         .collect();
 
@@ -145,8 +148,8 @@ mod test {
 
         let error_source = "not-existing".parse::<HeartRateSource>().unwrap_err();
         assert_eq!(
-            error_source.message,
-            "Unknown HeartRateSource: not-existing"
+            error_source.to_string(),
+            "Unknown HeartRateSource: 'not-existing'"
         );
     }
 
