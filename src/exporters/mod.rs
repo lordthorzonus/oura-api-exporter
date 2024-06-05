@@ -4,9 +4,9 @@ mod influx_db_measurement;
 use crate::pollers::OuraData;
 use export_item::ExportItem;
 use futures::{stream, Stream, StreamExt};
-use influxdb2::Client;
+use influxdb2::{api::write::TimestampPrecision, Client};
 use itertools::{Either, Itertools};
-use log::{info, error};
+use log::{debug, error};
 
 use self::influx_db_measurement::InfluxDBMeasurement;
 
@@ -36,28 +36,29 @@ pub async fn export_oura_data(
                     ExportItem::InfluxDB(data_point) => Either::Left(data_point),
                 });
 
-            info!("InfluxDB export items: {:?}", influxdb_data_points);
             if let Some((client, bucket)) = influxdb_env {
                 write_to_influxdb(influxdb_data_points, client, bucket).await
             }
-
-            info!("MQTT export item: {:?}", mqtt_export_items.last());
         })
         .await;
 }
 
-async fn write_to_influxdb(influxdb_data_points: Vec<InfluxDBMeasurement>, client: &Client, bucket: &String) {
-    info!("Writing to InfluxDB: {:?}", influxdb_data_points);
+async fn write_to_influxdb(
+    influxdb_data_points: Vec<InfluxDBMeasurement>,
+    client: &Client,
+    bucket: &String,
+) {
+    debug!("Writing to InfluxDB: {:?}", influxdb_data_points);
 
-    // let result = client
-    //     .write_with_precision(
-    //         bucket,
-    //         stream::iter(influxdb_data_points),
-    //         TimestampPrecision::Seconds,
-    //     )
-    //     .await;
-    //
-    // if let Err(err) = result {
-    //     eprintln!("Error writing to InfluxDB: {}", err);
-    // }
+    let result = client
+        .write_with_precision(
+            bucket,
+            stream::iter(influxdb_data_points),
+            TimestampPrecision::Seconds,
+        )
+        .await;
+
+    if let Err(err) = result {
+        error!("Error writing to InfluxDB: {}", err);
+    }
 }

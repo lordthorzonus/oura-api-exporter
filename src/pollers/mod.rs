@@ -33,6 +33,20 @@ pub enum OuraData {
     Error { message: String },
 }
 
+impl OuraData {
+    pub fn get_datetime(&self) -> Option<DateTime<Utc>> {
+        match self {
+            OuraData::HeartRate(heart_rate) => Some(heart_rate.timestamp),
+            OuraData::HeartRateVariability(hrv) => Some(hrv.timestamp),
+            OuraData::Sleep(sleep) => Some(sleep.bedtime_end),
+            OuraData::SleepPhase(sleep_phase) => Some(sleep_phase.timestamp),
+            OuraData::Readiness(readiness) => Some(readiness.timestamp),
+            OuraData::Activity => None,
+            OuraData::Error { .. } => None,
+        }
+    }
+}
+
 impl From<OuraPollingError> for OuraData {
     fn from(error: OuraPollingError) -> OuraData {
         return OuraData::Error {

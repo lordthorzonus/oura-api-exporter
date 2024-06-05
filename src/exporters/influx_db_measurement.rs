@@ -10,7 +10,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum MeasurementConvertingError {
-    #[error("Error while converting day into datetime for message: '{0}'")]
+    #[error("Error while converting day into datetime for measurement: '{0}'")]
     DayToDateTimeConversionError(String),
 }
 

@@ -3,6 +3,41 @@ use serde_yaml::from_reader;
 use std::fs::File;
 use thiserror::Error;
 
+#[derive(Debug, Deserialize)]
+pub enum ConfigLogLevel {
+    #[serde(rename = "debug")]
+    Debug,
+    #[serde(rename = "info")]
+    Info,
+
+    #[serde(rename = "warning")]
+    Warning,
+
+    #[serde(rename = "error")]
+    Error,
+}
+
+impl Into<log::LevelFilter> for &ConfigLogLevel {
+    fn into(self) -> log::LevelFilter {
+        match self {
+            ConfigLogLevel::Debug => log::LevelFilter::Debug,
+            ConfigLogLevel::Info => log::LevelFilter::Info,
+            ConfigLogLevel::Warning => log::LevelFilter::Warn,
+            ConfigLogLevel::Error => log::LevelFilter::Error,
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ConfigError {
+    #[error("Config FileError: '{0}'. Trying to open the file '{1}'")]
+    FileError(#[source] std::io::Error, String),
+
+    #[error("Config Serialization Error: {0}")]
+    YamlError(#[from] serde_yaml::Error),
+
+}
+
 #[derive(Deserialize, Clone, Debug)]
 pub struct OuraPerson {
     pub name: String,
@@ -22,15 +57,7 @@ pub struct Config {
     pub persons: Vec<OuraPerson>,
     pub poller_interval: u16,
     pub influxdb: Option<InfluxDB>,
-}
-
-#[derive(Debug, Error)]
-pub enum ConfigError {
-    #[error("Config FileError: '{0}'. Trying to open the file '{1}'")]
-    FileError(#[source] std::io::Error, String),
-
-    #[error("Config Serialization Error: {0}")]
-    YamlError(#[from] serde_yaml::Error),
+    pub log_level: Option<ConfigLogLevel>,
 }
 
 pub fn get_config() -> Result<Config, ConfigError> {

@@ -174,7 +174,7 @@ mod test {
                 timestamp: DateTime::parse_from_rfc3339("2021-01-01T00:00:00Z")
                     .unwrap()
                     .with_timezone(&Utc),
-                person_name: "test".to_owned(),
+                person_name: "test".to_string(),
             }
         );
     }
