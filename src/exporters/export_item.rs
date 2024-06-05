@@ -1,7 +1,5 @@
 use crate::exporters::influx_db_measurement::{InfluxDBMeasurement, MeasurementConvertingError};
-use crate::pollers::{
-    HeartRate, HeartRateVariability, OuraData, Sleep, SleepPhase, Readiness,
-};
+use crate::pollers::{HeartRate, HeartRateVariability, OuraData, Readiness, Sleep, SleepPhase};
 use std::fmt;
 use thiserror::Error;
 
@@ -25,9 +23,7 @@ pub enum ExportItemGenerationError {
     InvalidOuraData(String),
 }
 
-fn try_into_influx_db_export_item<T>(
-    data:  T,
-) -> Result<ExportItem, ExportItemGenerationError>
+fn try_into_influx_db_export_item<T>(data: T) -> Result<ExportItem, ExportItemGenerationError>
 where
     T: TryInto<InfluxDBMeasurement, Error = MeasurementConvertingError>,
 {
@@ -50,7 +46,7 @@ impl TryFrom<&HeartRate> for Vec<ExportItem> {
                 topic: MqttTopic::HeartRate,
                 payload: mqtt_payload,
             }),
-            try_into_influx_db_export_item(heart_rate_data)?
+            try_into_influx_db_export_item(heart_rate_data)?,
         ]);
     }
 }
@@ -79,7 +75,7 @@ impl TryFrom<&SleepPhase> for Vec<ExportItem> {
     type Error = ExportItemGenerationError;
 
     fn try_from(sleep_phase: &SleepPhase) -> Result<Vec<ExportItem>, ExportItemGenerationError> {
-        return Ok(vec![try_into_influx_db_export_item(sleep_phase)?])
+        return Ok(vec![try_into_influx_db_export_item(sleep_phase)?]);
     }
 }
 
@@ -87,7 +83,7 @@ impl TryFrom<&Readiness> for Vec<ExportItem> {
     type Error = ExportItemGenerationError;
 
     fn try_from(readiness: &Readiness) -> Result<Vec<ExportItem>, ExportItemGenerationError> {
-        return Ok(vec![try_into_influx_db_export_item(readiness)?])
+        return Ok(vec![try_into_influx_db_export_item(readiness)?]);
     }
 }
 

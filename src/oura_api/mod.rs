@@ -10,12 +10,11 @@ use reqwest::{Error as ReqwestError, StatusCode};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-
-pub use sleep::OuraSleepDocument;
 pub use heart_rate::OuraHeartRateData;
+pub use sleep::OuraSleepDocument;
 
 #[cfg(test)]
-pub use sleep::{OuraSleepMeasurement, OuraReadiness, OuraContributors};
+pub use sleep::{OuraContributors, OuraReadiness, OuraSleepMeasurement};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OuraApiResponse<T> {

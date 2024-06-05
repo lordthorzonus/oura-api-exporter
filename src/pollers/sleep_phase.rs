@@ -90,21 +90,33 @@ mod test {
         assert_eq!(SleepPhaseType::DeepSleep, sleep_phases[0].sleep_phase);
         assert_eq!("person", sleep_phases[0].person_name);
         assert_eq!("id", sleep_phases[0].sleep_id);
-        assert_eq!(DateTime::parse_from_rfc3339("2023-06-22T15:00:00+03:00").unwrap(), sleep_phases[0].timestamp);
+        assert_eq!(
+            DateTime::parse_from_rfc3339("2023-06-22T15:00:00+03:00").unwrap(),
+            sleep_phases[0].timestamp
+        );
 
         assert_eq!(SleepPhaseType::LightSleep, sleep_phases[1].sleep_phase);
         assert_eq!("person", sleep_phases[1].person_name);
         assert_eq!("id", sleep_phases[1].sleep_id);
-        assert_eq!(DateTime::parse_from_rfc3339("2023-06-22T15:05:00+03:00").unwrap(), sleep_phases[1].timestamp);
+        assert_eq!(
+            DateTime::parse_from_rfc3339("2023-06-22T15:05:00+03:00").unwrap(),
+            sleep_phases[1].timestamp
+        );
 
         assert_eq!(SleepPhaseType::REMSleep, sleep_phases[2].sleep_phase);
         assert_eq!("person", sleep_phases[2].person_name);
         assert_eq!("id", sleep_phases[2].sleep_id);
-        assert_eq!(DateTime::parse_from_rfc3339("2023-06-22T15:10:00+03:00").unwrap(), sleep_phases[2].timestamp);
+        assert_eq!(
+            DateTime::parse_from_rfc3339("2023-06-22T15:10:00+03:00").unwrap(),
+            sleep_phases[2].timestamp
+        );
 
         assert_eq!(SleepPhaseType::Awake, sleep_phases[3].sleep_phase);
         assert_eq!("person", sleep_phases[3].person_name);
         assert_eq!("id", sleep_phases[3].sleep_id);
-        assert_eq!(DateTime::parse_from_rfc3339("2023-06-22T15:15:00+03:00").unwrap(), sleep_phases[3].timestamp);
+        assert_eq!(
+            DateTime::parse_from_rfc3339("2023-06-22T15:15:00+03:00").unwrap(),
+            sleep_phases[3].timestamp
+        );
     }
 }

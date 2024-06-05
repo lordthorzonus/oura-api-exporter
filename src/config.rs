@@ -35,7 +35,6 @@ pub enum ConfigError {
 
     #[error("Config Serialization Error: {0}")]
     YamlError(#[from] serde_yaml::Error),
-
 }
 
 #[derive(Deserialize, Clone, Debug)]

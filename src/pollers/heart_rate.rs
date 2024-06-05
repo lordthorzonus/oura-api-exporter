@@ -102,7 +102,10 @@ pub async fn poll_heart_rate_data(
     start_time: &DateTime<Utc>,
     end_time: &DateTime<Utc>,
 ) -> Result<Vec<OuraData>, OuraApiError> {
-    info!("Polling heart rate data for '{}' from {} to {}", person.name, start_time, end_time);
+    info!(
+        "Polling heart rate data for '{}' from {} to {}",
+        person.name, start_time, end_time
+    );
     let response = get_heart_rate_data(&person.access_token, start_time, end_time).await;
     let heart_rate_data: Vec<OuraData> = response?
         .data

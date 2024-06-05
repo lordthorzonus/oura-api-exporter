@@ -2,7 +2,6 @@ use chrono::{Duration, Utc};
 use futures::{stream, StreamExt};
 use influxdb2::Client;
 use log::{error, info};
-use std::sync::Arc;
 
 mod config;
 mod exporters;
@@ -18,13 +17,16 @@ fn initialize_config_and_logging() -> Config {
     return match config::get_config() {
         Ok(config) => {
             match &config.log_level {
-                Some(level) => logger_builder.filter_level(level.into()).init(),
-                None => ()
+                Some(level) => {
+                    logger_builder.filter_level(level.into());
+                    ()
+                }
+                None => (),
             };
-            
+
             logger_builder.init();
             config
-        },
+        }
         Err(e) => {
             logger_builder.init();
             error!("Error reading configuration: {}", e);
@@ -34,7 +36,7 @@ fn initialize_config_and_logging() -> Config {
 }
 
 #[tokio::main]
-async fn main()  {
+async fn main() {
     let config = initialize_config_and_logging();
     let Config {
         influxdb,
@@ -42,26 +44,25 @@ async fn main()  {
         persons,
         log_level: _,
     } = config;
-    let influxdb_env = Arc::new(get_influxdb_env(influxdb));
+    let influxdb_env = get_influxdb_env(influxdb);
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
     tokio::spawn(async move {
         let poller = pollers::Poller::initialize_with_persons(&persons);
         let seconds_in_past: i64 = poller_interval.into();
         let sleep_time: u64 = poller_interval.into();
-        let mut latest_timestamp = Utc::now() - Duration::seconds(seconds_in_past) - Duration::hours(48);
+        let mut latest_timestamp =
+            Utc::now() - Duration::seconds(seconds_in_past) - Duration::hours(48);
 
         loop {
             let start_time = latest_timestamp.clone();
             let end_time = Utc::now();
-            let mut chunk_stream = poller
-                .poll_oura_data(&start_time, &end_time)
-                .chunks(100);
+            let mut chunk_stream = poller.poll_oura_data(&start_time, &end_time).chunks(100);
 
             while let Some(chunk) = chunk_stream.next().await {
                 info!("Sending data for export. Got {} items", chunk.len());
                 let latest_timestamp_in_chunk = chunk.iter().map(|item| item.get_datetime()).max();
-                
+
                 if let Some(Some(timestamp)) = latest_timestamp_in_chunk {
                     if timestamp > latest_timestamp {
                         latest_timestamp = timestamp + Duration::seconds(1);

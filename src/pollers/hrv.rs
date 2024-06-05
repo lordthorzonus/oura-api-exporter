@@ -44,7 +44,7 @@ impl OuraSleepDocument {
 #[cfg(test)]
 mod test {
     use crate::oura_api::{OuraSleepDocument, OuraSleepMeasurement};
-    use chrono::{Utc, DateTime};
+    use chrono::{DateTime, Utc};
 
     #[test]
     fn test_try_to_heart_rate_variability() {
@@ -73,15 +73,21 @@ mod test {
 
         assert_eq!(
             hrv_data[0].timestamp,
-            "2021-01-01T00:00:00+00:00".parse::<DateTime<Utc>>().unwrap()
+            "2021-01-01T00:00:00+00:00"
+                .parse::<DateTime<Utc>>()
+                .unwrap()
         );
         assert_eq!(
             hrv_data[1].timestamp,
-            "2021-01-01T00:01:00+00:00".parse::<DateTime<Utc>>().unwrap()
+            "2021-01-01T00:01:00+00:00"
+                .parse::<DateTime<Utc>>()
+                .unwrap()
         );
         assert_eq!(
             hrv_data[2].timestamp,
-            "2021-01-01T00:03:00+00:00".parse::<DateTime<Utc>>().unwrap()
+            "2021-01-01T00:03:00+00:00"
+                .parse::<DateTime<Utc>>()
+                .unwrap()
         );
     }
 }
