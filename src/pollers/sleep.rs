@@ -1,11 +1,12 @@
-use crate::config::OuraPerson;
-use crate::oura_api::{get_sleep_documents, OuraApiError, OuraSleepDocument};
+use crate::oura_api::{OuraApiError, OuraSleepDocument};
 use crate::pollers::dates::TryOuraTimeStringParsing;
 use crate::pollers::errors::OuraPollingError;
 use crate::pollers::OuraData;
 use chrono::{DateTime, NaiveDate, Utc};
 use log::info;
 use std::fmt::Display;
+
+use super::PollerPerson;
 
 #[derive(Debug)]
 pub enum SleepType {
@@ -51,24 +52,25 @@ impl Display for SleepType {
 #[derive(Debug)]
 pub struct Sleep {
     pub id: String,
-    pub average_breath: f32,
-    pub average_hrv: i16,
+    pub average_breath: Option<f32>,
+    pub average_heartrate: Option<f32>,
+    pub average_hrv: Option<i16>,
     pub awake_time: i16,
     pub bedtime_end: DateTime<Utc>,
     pub bedtime_start: DateTime<Utc>,
     pub day: NaiveDate,
-    pub deep_sleep_duration: i16,
-    pub efficiency: i16,
-    pub latency: i16,
-    pub light_sleep_duration: i16,
+    pub deep_sleep_duration: Option<i16>,
+    pub efficiency: Option<i16>,
+    pub latency: Option<i16>,
+    pub light_sleep_duration: Option<i16>,
     pub low_battery_alert: bool,
-    pub lowest_heart_rate: i16,
+    pub lowest_heart_rate: Option<i16>,
     pub readiness_score_delta: Option<f32>,
-    pub rem_sleep_duration: i16,
-    pub restless_periods: i16,
+    pub rem_sleep_duration: Option<i16>,
+    pub restless_periods: Option<i16>,
     pub sleep_score_delta: Option<f32>,
     pub time_in_bed: i16,
-    pub total_sleep_duration: i16,
+    pub total_sleep_duration: Option<i16>,
     pub sleep_type: SleepType,
     pub person_name: String,
 }
@@ -79,6 +81,7 @@ impl OuraSleepDocument {
             id: self.id.clone(),
             awake_time: self.awake_time,
             average_breath: self.average_breath,
+            average_heartrate: self.average_heart_rate,
             average_hrv: self.average_hrv,
             day: self.day.try_parse_oura_date()?,
             bedtime_start: self.bedtime_start.try_parse_oura_timestamp()?,
@@ -167,16 +170,20 @@ fn parse_readiness_data<'a>(
     })
 }
 pub async fn poll_sleep_data<'a>(
-    person: &'a OuraPerson,
+    poller_person: &PollerPerson<'a>,
     start_time: &'a DateTime<Utc>,
     end_time: &'a DateTime<Utc>,
 ) -> Result<Vec<OuraData>, OuraApiError> {
     info!(
         "Polling sleep data for '{}' from {} to {}",
-        person.name, start_time, end_time
+        poller_person.person.name, start_time, end_time
     );
-    let person_name = person.name.as_str();
-    let response = get_sleep_documents(&person.access_token, start_time, end_time).await;
+
+    let person_name = &poller_person.person.name;
+    let response = poller_person
+        .client
+        .get_sleep_documents(start_time, end_time)
+        .await;
     let sleep_documents = response?.data;
 
     let heart_rate_data = parse_heart_rate_data(person_name, &sleep_documents);

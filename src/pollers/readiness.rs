@@ -18,7 +18,7 @@ pub struct Contributors {
 pub struct Readiness {
     pub score: u8,
     pub temperature_deviation: Option<f32>,
-    pub temperature_trend_deviation: f32,
+    pub temperature_trend_deviation: Option<f32>,
     pub contributors: Contributors,
     pub timestamp: DateTime<Utc>,
     pub person_name: String,
@@ -86,7 +86,7 @@ mod test {
             readiness: Some(OuraReadiness {
                 score: Some(80),
                 temperature_deviation: Some(0.5),
-                temperature_trend_deviation: 0.1,
+                temperature_trend_deviation: Some(0.1),
                 contributors: OuraContributors {
                     activity_balance: 1,
                     body_temperature: 2,
@@ -105,7 +105,7 @@ mod test {
 
         assert_eq!(readiness.score, 80);
         assert_eq!(readiness.temperature_deviation, Some(0.5));
-        assert_eq!(readiness.temperature_trend_deviation, 0.1);
+        assert_eq!(readiness.temperature_trend_deviation, Some(0.1));
 
         assert_eq!(readiness.contributors.activity_balance, 1);
         assert_eq!(readiness.contributors.body_temperature, 2);
@@ -151,7 +151,7 @@ mod test {
             readiness: Some(OuraReadiness {
                 score: None,
                 temperature_deviation: Some(0.5),
-                temperature_trend_deviation: 0.1,
+                temperature_trend_deviation: Some(0.1),
                 contributors: OuraContributors {
                     activity_balance: 1,
                     body_temperature: 2,

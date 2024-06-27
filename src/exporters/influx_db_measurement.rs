@@ -53,10 +53,13 @@ pub struct SleepDataPoint {
     id: String,
 
     #[influxdb(field)]
-    average_breath: f64,
+    average_breath: Option<f64>,
 
     #[influxdb(field)]
-    average_hrv: i64,
+    average_hrv: Option<i64>,
+
+    #[influxdb(field)]
+    average_heart_rate: Option<f64>,
 
     #[influxdb(field)]
     awake_time: i64,
@@ -71,31 +74,31 @@ pub struct SleepDataPoint {
     day: i64,
 
     #[influxdb(field)]
-    deep_sleep_duration: i64,
+    deep_sleep_duration: Option<i64>,
 
     #[influxdb(field)]
-    efficiency: i64,
+    efficiency: Option<i64>,
 
     #[influxdb(field)]
-    latency: i64,
+    latency: Option<i64>,
 
     #[influxdb(field)]
-    light_sleep_duration: i64,
+    light_sleep_duration: Option<i64>,
 
     #[influxdb(field)]
     low_battery_alert: bool,
 
     #[influxdb(field)]
-    lowest_heart_rate: i64,
+    lowest_heart_rate: Option<i64>,
 
     #[influxdb(field)]
     readiness_score_delta: f64,
 
     #[influxdb(field)]
-    rem_sleep_duration: i64,
+    rem_sleep_duration: Option<i64>,
 
     #[influxdb(field)]
-    restless_periods: i64,
+    restless_periods: Option<i64>,
 
     #[influxdb(field)]
     sleep_score_delta: f64,
@@ -104,7 +107,7 @@ pub struct SleepDataPoint {
     time_in_bed: i64,
 
     #[influxdb(field)]
-    total_sleep_duration: i64,
+    total_sleep_duration: Option<i64>,
 
     #[influxdb(tag)]
     sleep_type: String,
@@ -135,7 +138,7 @@ pub struct ReadinessDataPoint {
     temperature_deviation: Option<f64>,
 
     #[influxdb(field)]
-    temperature_trend_deviation: f64,
+    temperature_trend_deviation: Option<f64>,
 
     #[influxdb(field)]
     activity_balance_contribution: i64,
@@ -220,24 +223,25 @@ impl TryFrom<&Sleep> for InfluxDBMeasurement {
 
         Ok(InfluxDBMeasurement::Sleep(SleepDataPoint {
             id: value.id.to_string(),
-            average_breath: value.average_breath.into(),
-            average_hrv: value.average_hrv.into(),
+            average_breath: value.average_breath.map(|v| v.into()),
+            average_hrv: value.average_hrv.map(|v| v.into()),
+            average_heart_rate: value.average_heartrate.map(|v| v.into()),
             awake_time: value.awake_time.into(),
             bedtime_end: value.bedtime_end.timestamp(),
             bedtime_start: value.bedtime_start.timestamp(),
             day: day?.timestamp(),
-            deep_sleep_duration: value.deep_sleep_duration.into(),
-            efficiency: value.efficiency.into(),
-            latency: value.latency.into(),
-            light_sleep_duration: value.light_sleep_duration.into(),
+            deep_sleep_duration: value.deep_sleep_duration.map(|v| v.into()),
+            efficiency: value.efficiency.map(|v| v.into()),
+            latency: value.latency.map(|v| v.into()),
+            light_sleep_duration: value.light_sleep_duration.map(|v| v.into()),
             low_battery_alert: value.low_battery_alert,
-            lowest_heart_rate: value.lowest_heart_rate.into(),
+            lowest_heart_rate: value.lowest_heart_rate.map(|v| v.into()),
             readiness_score_delta: readiness_score_delta.into(),
-            rem_sleep_duration: value.rem_sleep_duration.into(),
-            restless_periods: value.restless_periods.into(),
+            rem_sleep_duration: value.rem_sleep_duration.map(|v| v.into()),
+            restless_periods: value.restless_periods.map(|v| v.into()),
             sleep_score_delta: sleep_score_delta.into(),
             time_in_bed: value.time_in_bed.into(),
-            total_sleep_duration: value.total_sleep_duration.into(),
+            total_sleep_duration: value.total_sleep_duration.map(|v| v.into()),
             sleep_type: value.sleep_type.to_string(),
             person_name: value.person_name.to_string(),
         }))
@@ -293,7 +297,7 @@ impl TryFrom<&Readiness> for InfluxDBMeasurement {
         Ok(InfluxDBMeasurement::Readiness(ReadinessDataPoint {
             readiness_score: value.score.into(),
             temperature_deviation: value.temperature_deviation.map(|v| v.into()),
-            temperature_trend_deviation: value.temperature_trend_deviation.into(),
+            temperature_trend_deviation: value.temperature_trend_deviation.map(|v| v.into()),
             activity_balance_contribution: value.contributors.activity_balance.into(),
             body_temperature_contribution: value.contributors.body_temperature.into(),
             hrv_balance_contribution: value.contributors.hrv_balance.into(),

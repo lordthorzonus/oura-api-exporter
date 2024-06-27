@@ -22,6 +22,15 @@ pub enum OuraPollingError {
     #[error("No readiness data found for sleep document with id: '{sleep_id}'")]
     NoReadinessDataFoundError { sleep_id: String },
 
+    #[error("No sleep data found for sleep document with id: '{sleep_id}'")]
+    NoSleepDataFoundError { sleep_id: String },
+
+    #[error("No sleep phase data found for sleep document with id: '{sleep_id}'")]
+    NoSleepPhaseDataFoundError { sleep_id: String },
+
+    #[error("No heart rate data found for sleep document with id: '{sleep_id}'")]
+    NoHeartRateDataFoundError { sleep_id: String },
+
     #[error("No readiness score found for sleep document with id: '{sleep_id}'")]
     NoReadinessScoreFoundError { sleep_id: String },
 

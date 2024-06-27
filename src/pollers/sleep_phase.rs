@@ -45,18 +45,27 @@ impl OuraSleepDocument {
         let mut timestamp = self.bedtime_start.try_parse_oura_timestamp()?;
         let mut sleep_phases: Vec<SleepPhase> = Vec::new();
 
-        for sleep_phase_char in self.sleep_phase_5_min.chars() {
-            sleep_phases.push(SleepPhase {
-                sleep_phase: sleep_phase_char.try_into()?,
-                sleep_id: self.id.clone(),
-                timestamp,
-                person_name: person_name.to_owned(),
-            });
+        match &self.sleep_phase_5_min {
+            Some(sleep_phase) => {
+                for sleep_phase_char in sleep_phase.chars() {
+                    sleep_phases.push(SleepPhase {
+                        sleep_phase: sleep_phase_char.try_into()?,
+                        sleep_id: self.id.clone(),
+                        timestamp,
+                        person_name: person_name.to_owned(),
+                    });
 
-            timestamp = timestamp.add(Duration::minutes(5));
+                    timestamp = timestamp.add(Duration::minutes(5));
+                }
+
+                return Ok(sleep_phases);
+            }
+            None => {
+                return Err(OuraPollingError::NoSleepPhaseDataFoundError {
+                    sleep_id: self.id.to_string(),
+                })
+            }
         }
-
-        Ok(sleep_phases)
     }
 }
 
@@ -77,7 +86,7 @@ mod test {
         let oura_sleep_document = OuraSleepDocument {
             id: "id".to_owned(),
             bedtime_start: "2023-06-22T15:00:00+03:00".to_string(),
-            sleep_phase_5_min: "1234".to_owned(),
+            sleep_phase_5_min: Some("1234".to_owned()),
             ..Default::default()
         };
 

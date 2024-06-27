@@ -15,6 +15,9 @@ pub enum ConfigLogLevel {
 
     #[serde(rename = "error")]
     Error,
+
+    #[serde(rename = "trace")]
+    Trace,
 }
 
 impl Into<log::LevelFilter> for &ConfigLogLevel {
@@ -24,6 +27,7 @@ impl Into<log::LevelFilter> for &ConfigLogLevel {
             ConfigLogLevel::Info => log::LevelFilter::Info,
             ConfigLogLevel::Warning => log::LevelFilter::Warn,
             ConfigLogLevel::Error => log::LevelFilter::Error,
+            ConfigLogLevel::Trace => log::LevelFilter::Trace,
         }
     }
 }
@@ -52,10 +56,19 @@ pub struct InfluxDB {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct OuraApi {
+    pub url: Option<String>,
+    pub port: Option<String>,
+    pub proxy: Option<String>,
+    pub verbose_logging: Option<bool>,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Config {
     pub persons: Vec<OuraPerson>,
     pub poller_interval: u16,
     pub influxdb: Option<InfluxDB>,
+    pub oura_api: Option<OuraApi>,
     pub log_level: Option<ConfigLogLevel>,
 }
 

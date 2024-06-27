@@ -29,7 +29,7 @@ pub async fn export_oura_data(
         })
         .chunks(100)
         .for_each_concurrent(None, |export_items| async move {
-            let (influxdb_data_points, mqtt_export_items): (Vec<_>, Vec<_>) = export_items
+            let (influxdb_data_points, _mqtt_export_items): (Vec<_>, Vec<_>) = export_items
                 .into_iter()
                 .partition_map(|export_item| match export_item {
                     ExportItem::MQTT(message) => Either::Right(message),

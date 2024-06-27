@@ -6,8 +6,8 @@ mod readiness;
 mod sleep;
 mod sleep_phase;
 
-use crate::config::OuraPerson;
-use crate::oura_api::OuraApiError;
+use crate::config::{OuraApi, OuraPerson};
+use crate::oura_api::{OuraApiError, OuraHttpClient};
 use crate::pollers::sleep::poll_sleep_data;
 use chrono::{DateTime, Utc};
 use futures::stream::{select, select_all};
@@ -63,13 +63,33 @@ impl From<OuraApiError> for OuraData {
     }
 }
 
+struct PollerPerson<'a> {
+    person: &'a OuraPerson,
+    client: OuraHttpClient<'a>,
+}
+
 pub struct Poller<'a> {
-    persons: &'a Vec<OuraPerson>,
+    persons: Vec<PollerPerson<'a>>,
 }
 
 impl Poller<'_> {
-    pub fn initialize_with_persons(persons: &Vec<OuraPerson>) -> Poller<'_> {
-        Poller { persons }
+    pub fn initialize_with_persons<'a>(
+        persons: &'a Vec<OuraPerson>,
+        http_client_config: &'a Option<OuraApi>,
+    ) -> Result<Poller<'a>, OuraApiError> {
+        let poller_persons: Result<Vec<PollerPerson>, OuraApiError> = persons
+            .iter()
+            .map(|person| {
+                Ok(PollerPerson {
+                    person,
+                    client: OuraHttpClient::from_config(http_client_config, person)?,
+                })
+            })
+            .collect();
+
+        Ok(Poller {
+            persons: poller_persons?,
+        })
     }
 
     pub fn poll_oura_data<'a>(

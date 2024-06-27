@@ -1,7 +1,6 @@
-use super::OuraData;
-use crate::config::OuraPerson;
+use super::{OuraData, PollerPerson};
 use crate::oura_api::OuraApiError;
-use crate::oura_api::{get_heart_rate_data, OuraHeartRateData, OuraSleepDocument};
+use crate::oura_api::{OuraHeartRateData, OuraSleepDocument};
 use crate::pollers::dates::TryOuraTimeStringParsing;
 use crate::pollers::errors::OuraPollingError;
 use chrono::{DateTime, Utc};
@@ -73,47 +72,58 @@ impl OuraHeartRateData {
 
 impl OuraSleepDocument {
     pub fn try_to_heart_rate_data(&self, person: &str) -> Result<Vec<HeartRate>, OuraPollingError> {
-        let heart_rate_measurement_interval_in_seconds = self.heart_rate.interval.round() as i64;
+        match &self.heart_rate {
+            Some(heart_rate) => {
+                let heart_rate_measurement_interval_in_seconds =
+                    heart_rate.interval.round() as i64;
 
-        let mut heart_rate_data: Vec<HeartRate> = Vec::new();
-        let mut timestamp = self.heart_rate.timestamp.try_parse_oura_timestamp()?;
+                let mut heart_rate_data: Vec<HeartRate> = Vec::new();
+                let mut timestamp = heart_rate.timestamp.try_parse_oura_timestamp()?;
 
-        for heart_rate_item in &self.heart_rate.items {
-            if let Some(heart_rate) = heart_rate_item {
-                heart_rate_data.push(HeartRate {
-                    bpm: heart_rate.round() as u8,
-                    person_name: person.to_owned(),
-                    source: HeartRateSource::Sleep,
-                    timestamp,
-                });
+                for heart_rate_item in &heart_rate.items {
+                    if let Some(heart_rate) = heart_rate_item {
+                        heart_rate_data.push(HeartRate {
+                            bpm: heart_rate.round() as u8,
+                            person_name: person.to_owned(),
+                            source: HeartRateSource::Sleep,
+                            timestamp,
+                        });
+                    }
+
+                    timestamp = timestamp.add(chrono::Duration::seconds(
+                        heart_rate_measurement_interval_in_seconds,
+                    ));
+                }
+
+                Ok(heart_rate_data)
             }
-
-            timestamp = timestamp.add(chrono::Duration::seconds(
-                heart_rate_measurement_interval_in_seconds,
-            ));
+            None => Err(OuraPollingError::NoHeartRateDataFoundError { sleep_id: self.id.to_string() })
         }
-
-        Ok(heart_rate_data)
     }
 }
 
 pub async fn poll_heart_rate_data(
-    person: &OuraPerson,
+    person: &PollerPerson<'_>,
     start_time: &DateTime<Utc>,
     end_time: &DateTime<Utc>,
 ) -> Result<Vec<OuraData>, OuraApiError> {
     info!(
         "Polling heart rate data for '{}' from {} to {}",
-        person.name, start_time, end_time
+        person.person.name, start_time, end_time
     );
-    let response = get_heart_rate_data(&person.access_token, start_time, end_time).await;
+    let response = person
+        .client
+        .get_heart_rate_data(start_time, end_time)
+        .await;
     let heart_rate_data: Vec<OuraData> = response?
         .data
         .iter()
-        .map(|raw| match raw.try_to_heart_rate_data(&person.name) {
-            Ok(data) => OuraData::HeartRate(data),
-            Err(parsing_error) => OuraData::from(parsing_error),
-        })
+        .map(
+            |raw| match raw.try_to_heart_rate_data(&person.person.name) {
+                Ok(data) => OuraData::HeartRate(data),
+                Err(parsing_error) => OuraData::from(parsing_error),
+            },
+        )
         .collect();
 
     return Ok(heart_rate_data);
@@ -186,11 +196,11 @@ mod test {
     fn test_try_oura_sleep_document_to_heart_rate_data() {
         let oura_sleep_document = OuraSleepDocument {
             id: "id".to_owned(),
-            heart_rate: OuraSleepMeasurement {
+            heart_rate: Some(OuraSleepMeasurement {
                 interval: 1.0,
                 items: vec![Some(60.0), Some(61.0), Some(62.0)],
                 timestamp: "2023-06-22T15:00:00+03:00".to_string(),
-            },
+            }),
             ..Default::default()
         };
 
